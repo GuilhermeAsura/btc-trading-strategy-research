@@ -1,17 +1,25 @@
 project_name: "btc_quantitative_research"
-version: "1.0.0"
+version: "1.1.0" # updated for evolutionary optimization support
+
+# genetic algorithm & nsga-ii global settings
+optimization_settings:
+  enabled: true # toggle ga pipeline
+  algorithm: "nsga2" # non-dominated sorting genetic algorithm ii
+  pop_size: 100 # number of individuals in each generation
+  n_gen: 200 # number of generations to run
+  mutation_prob: 0.1 # probability of random weight changes
+  crossover_prob: 0.9 # probability of combining parent solutions
+  seed: 42 # for reproducibility
 
 # bitcoin trading strategy research parameters
 btc_trading:
   data:
-    # paths relative to the project root
     raw_path: "data/raw/BITSTAMP_BTCUSD, 1D - ISOtime.csv"
     processed_path: "data/processed/btc_features_labeled.csv"
 
   features:
-    # the script uses these to identify columns or calculate new ones
     moving_averages: [9, 20, 200]
-    z_score_window: 200  # for the long-term "cheapness" indicator
+    z_score_window: 200
     z_score_9_window: 9
     volatility_window: 20
     vol_ratio_long_window: 100
@@ -27,37 +35,43 @@ btc_trading:
       - k_velocity
 
   labeling:
-    # triple barrier method parameters
     method: "triple_barrier"
-    barrier_days: 7      # how many days to wait for the result
-    profit_margin: 0.05  # % take profit (label 1)
-    stop_loss: 0.04      # % stop loss (label -1)
+    barrier_days: 7
+    profit_margin: 0.05
+    stop_loss: 0.04
 
   backtest:
     initial_capital: 10000
-    fees: 0.001          # 0.1% binance-style fee
-    slippage: 0.0005     # 0.05% expected slippage
+    fees: 0.001
+    slippage: 0.0005
     confidence_threshold: 0.55
 
-# procurement optimization
+# procurement & portfolio optimization
 procurement_optimization:
   data:
     raw_path: "data/raw/procurement/spreadsheets/operacoes_intermediario_otimizado.csv"
     processed_path: "data/processed/procurement_optimized.csv"
-    strategies_dir: "data/raw/procurement/spreadsheets/operacoes_intermediario_otimizado.csv"
-  features:
-    # parameters to find the optimized linear combination
-    model_cols: 
-      - 'tempo_operação'
-      - 'qtd_compra'
-      - 'qtd_venda'
-      - 'drawdown'
-      - 'ganho_max_'
-      - 'perda_max_'
-      - 'tet'
-    target: 'res__operação'
-  model_params:
-    fit_intercept: true
-  optimization:
-    budget: 25.0   
+    # path to strategy reports for matrix creation
+    strategies_dir: "data/raw/procurement/strategies/" 
+  
+  constraints:
+    total_budget: 21 # maximum units/contracts to allocate
+    max_weight_per_asset: 0.20 # risk parity constraint (20% max per strategy)
+    min_weight_per_asset: 0.00 # allow zero allocation
+
+  # objectives for nsga-ii (multi-objective optimization)
+  objectives:
+    - name: "return"
+      target: "maximize"
+    - name: "volatility"
+      target: "minimize"
+    - name: "max_drawdown"
+      target: "minimize"
+    - name: "linearity_r2" # r-squared of equity curve
+      target: "maximize"
+
+  # current slsqp solver fallback parameters
+  solver_params:
     method: "SLSQP"
+    ftol: 1e-9
+    maxiter: 1000
