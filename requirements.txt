@@ -11,6 +11,7 @@ statsmodels  # For stationarity tests and statistics
 scikit-learn
 xgboost
 optuna        # Essential for hyperparameter optimization
+pymoo
 
 # Backtesting e visualization
 vectorbt     # high-performance backtesting
